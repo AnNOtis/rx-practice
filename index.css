@@ -1,0 +1,6 @@
+ul {
+  padding: 0
+}
+ul.list > li > img {
+  width: 30px
+}
