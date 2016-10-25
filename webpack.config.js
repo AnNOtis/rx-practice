@@ -15,16 +15,10 @@ module.exports = {
   entry: entries,
   output: {
     path: 'dist',
-    filename: '[name].js'
+    filename: '[name].js',
+    publicPath: '/assets/'
   },
   module: {
-    preLoaders: [
-      {
-        test: /\.js$/,
-        loader: 'standard',
-        include: PATH.src,
-      }
-    ],
     loaders: [
       {
         test: /\.js$/,
