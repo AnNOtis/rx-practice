@@ -2,8 +2,8 @@ import './index.sass'
 import { Observable } from 'rx'
 
 const unit = 10
-const width = 210
-const height = 210
+const width = 410
+const height = 410
 const moveRate = 300
 const fps = 40
 
@@ -29,13 +29,16 @@ document.body.appendChild(canvas)
 const ctx = canvas.getContext('2d')
 ctx.translate(width/2, height/2)
 
-const start$ = Observable.fromEvent(document, 'keyup')
+const keyup$ = Observable.fromEvent(document, 'keyup')
   .pluck('code')
+
+const start$ = keyup$
   .filter((value) => value === 'Space')
 
-const pressArrowKey$ = Observable.fromEvent(document, 'keyup')
-  .pluck('code')
-  .filter((value) => ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(value) !== -1 )
+const pressArrowKey$ = keyup$
+  .filter((value) =>
+    ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(value) !== -1
+  )
 
 const manualMove$ = pressArrowKey$
   .skipUntil(start$)
@@ -43,14 +46,14 @@ const manualMove$ = pressArrowKey$
 const intervalMove$ = Observable.interval(moveRate)
   .withLatestFrom(manualMove$, (_, step) => step)
 
-const nextStep$ = manualMove$.merge(intervalMove$)
+const nextStep$ = manualMove$
+  .merge(intervalMove$)
   .map(mappingCodeToOffset)
 
 const updateScene$ = Observable.interval(fps)
   .skipUntil(start$)
 
 start$.subscribe(drawSnake)
-// move$.subscribe(move)
 nextStep$.subscribe(walk)
 updateScene$.subscribe(drawSnake)
 
@@ -64,9 +67,7 @@ function drawSnake () {
   let tempX = x * unit
   let tempY = y * unit
   if (tempX > width/2 || tempX < -width/2 || tempY > height/2 || tempY < -height/2 ) {
-    console.log(tempX)
-    console.log(tempY)
-    console.log('lose');
+    alert('lose');
     moveInterval$.depose()
     updateScene$.depose()
 
