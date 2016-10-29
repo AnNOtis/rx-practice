@@ -35,22 +35,11 @@ const start$ = keyup$
   .filter((value) => value === 'Space')
 
 const pressArrowKey$ = keyup$
-  .filter((value) =>
-    ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(value) !== -1
-  )
+  .filter(isValidArrowKeyCode)
 
 const manualMove$ = pressArrowKey$
   .skipUntil(start$)
-  .distinctUntilChanged(null, (preKey, currentKey) => {
-    const youCanNotGoBack = {
-      ArrowUp: 'ArrowDown',
-      ArrowDown: 'ArrowUp',
-      ArrowLeft: 'ArrowRight',
-      ArrowRight: 'ArrowLeft',
-    }
-
-    return youCanNotGoBack[preKey] === currentKey
-  })
+  .distinctUntilChanged(null, isReversedArrowKey)
 
 const intervalMove$ = Observable.interval(moveRate)
   .withLatestFrom(manualMove$, (_, step) => step)
@@ -61,17 +50,10 @@ const nextStep$ = manualMove$
 
 const snakeMoved$ = nextStep$
   .scan((snake, step) => {
-    const {
-      head,
-      body,
-    } = snake
-
-    if (step[0] == -head[0] && step[1] == -head[1]) {
-      return snake
-    }
+    const { head, body } = snake
 
     return {
-      head: [head[0] + step[0], head[1] + step[1]],
+      head: [ head[0]+step[0], head[1]+step[1] ],
       body: [ [-step[0], -step[1]], ...body.slice(0, -1) ]
     }
   }, INIT_SNAKE)
@@ -81,11 +63,23 @@ const updateScene$ = Observable.interval(fps)
   .skipUntil(start$)
   .withLatestFrom(snakeMoved$, (_, snake) => snake)
 
-const pc = new PaintCanvas(document.getElementById('game'), { width, height })
-prepareMenu()
+const pc = prepareCanvas()
+drawMenu()
 
 start$.subscribe(resetScene)
 updateScene$.subscribe(drawSnake)
+
+function prepareCanvas () {
+  return new PaintCanvas(document.getElementById('game'), { width, height })
+}
+
+function drawMenu() {
+  pc.clear(BG.menu)
+}
+
+function resetScene() {
+  pc.clear(BG.gaming)
+}
 
 function drawSnake (snake) {
   resetScene()
@@ -102,14 +96,6 @@ function drawSnake (snake) {
   }, head)
 }
 
-function prepareMenu() {
-  pc.clear(BG.menu)
-}
-
-function resetScene() {
-  pc.clear(BG.gaming)
-}
-
 function drawSnakeJoint(x, y) {
   pc.strokeStyle('green')
   pc.rect(x * unit, y * unit, unit, unit)
@@ -124,4 +110,19 @@ function mappingCodeToOffset (code) {
   }
 
   return mapping[code]
+}
+
+function isValidArrowKeyCode (code) {
+  return ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(code) !== -1
+}
+
+function isReversedArrowKey (keyOne, KeyTwo) {
+  const reversedKeyMapping = {
+    ArrowUp: 'ArrowDown',
+    ArrowDown: 'ArrowUp',
+    ArrowLeft: 'ArrowRight',
+    ArrowRight: 'ArrowLeft',
+  }
+
+  return reversedKeyMapping[keyOne] === KeyTwo
 }
