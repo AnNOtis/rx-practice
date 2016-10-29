@@ -4,21 +4,25 @@ import { Observable } from 'rx'
 const unit = 10
 const width = 410
 const height = 410
-const moveRate = 300
+const moveRate = 500
 const fps = 40
 
 let x = 0
 let y = 0
-let snakeBody = [
-  [0, 1],
-  [0, 1],
-  [0, 1],
-  [0, 1],
-  [0, 1],
-  [0, 1],
-  [0, 1],
-  [0, 1],
-]
+let INIT_SNAKE =
+  {
+    head: [0, 0],
+    body: [
+      [0, 1],
+      [0, 1],
+      [0, 1],
+      [0, 1],
+      [0, 1],
+      [0, 1],
+      [0, 1],
+      [0, 1],
+    ],
+  }
 
 const canvas = document.createElement('canvas')
 canvas.id = 'canvas'
@@ -42,6 +46,16 @@ const pressArrowKey$ = keyup$
 
 const manualMove$ = pressArrowKey$
   .skipUntil(start$)
+  .distinctUntilChanged(null, (preKey, currentKey) => {
+    const youCanNotGoBack = {
+      ArrowUp: 'ArrowDown',
+      ArrowDown: 'ArrowUp',
+      ArrowLeft: 'ArrowRight',
+      ArrowRight: 'ArrowLeft',
+    }
+
+    return youCanNotGoBack[preKey] === currentKey
+  })
 
 const intervalMove$ = Observable.interval(moveRate)
   .withLatestFrom(manualMove$, (_, step) => step)
@@ -50,22 +64,39 @@ const nextStep$ = manualMove$
   .merge(intervalMove$)
   .map(mappingCodeToOffset)
 
+const snakeMoved$ = nextStep$
+  .scan((snake, step) => {
+    const {
+      head,
+      body,
+    } = snake
+
+    if (step[0] == -head[0] && step[1] == -head[1]) {
+      return snake
+    }
+
+    return {
+      head: [head[0] + step[0], head[1] + step[1]],
+      body: [ [-step[0], -step[1]], ...body.slice(0, -1) ]
+    }
+  }, INIT_SNAKE)
+  .startWith(INIT_SNAKE)
+
 const updateScene$ = Observable.interval(fps)
   .skipUntil(start$)
+  .withLatestFrom(snakeMoved$, (_, snake) => snake)
 
-start$.subscribe(drawSnake)
-nextStep$.subscribe(walk)
+start$.subscribe(clear)
 updateScene$.subscribe(drawSnake)
 
-function walk (step) {
-  x = x + step[0]
-  y = y + step[1]
-  snakeBody = [ [-step[0], -step[1]], ...snakeBody.slice(0, -1) ]
-}
+function drawSnake (snake) {
+  const {
+    head,
+    body,
+  } = snake
 
-function drawSnake () {
-  let tempX = x * unit
-  let tempY = y * unit
+  let tempX = head[0] * unit
+  let tempY = head[1] * unit
   if (tempX > width/2 || tempX < -width/2 || tempY > height/2 || tempY < -height/2 ) {
     alert('lose');
     moveInterval$.depose()
@@ -77,7 +108,7 @@ function drawSnake () {
   clear()
   rect(ctx, tempX, tempY, unit, unit)
 
-  snakeBody.forEach((value) => {
+  body.forEach((value) => {
     tempX = tempX + value[0] * unit
     tempY = tempY + value[1] * unit
 
