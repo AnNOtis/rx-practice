@@ -1,14 +1,18 @@
 import './index.sass'
 import { Observable } from 'rx'
+import PaintCanvas from './paint_canvas'
 
 const unit = 10
-const width = 410
-const height = 410
+const width = unit * 41
+const height = unit * 41
 const moveRate = 500
 const fps = 40
 
-let x = 0
-let y = 0
+const BG = {
+  menu: '#345',
+  gaming: '#333'
+}
+
 let INIT_SNAKE =
   {
     head: [0, 0],
@@ -23,15 +27,6 @@ let INIT_SNAKE =
       [0, 1],
     ],
   }
-
-const canvas = document.createElement('canvas')
-canvas.id = 'canvas'
-canvas.width = width
-canvas.height = height
-document.body.appendChild(canvas)
-
-const ctx = canvas.getContext('2d')
-ctx.translate(width/2, height/2)
 
 const keyup$ = Observable.fromEvent(document, 'keyup')
   .pluck('code')
@@ -86,44 +81,38 @@ const updateScene$ = Observable.interval(fps)
   .skipUntil(start$)
   .withLatestFrom(snakeMoved$, (_, snake) => snake)
 
-start$.subscribe(clear)
+const pc = new PaintCanvas(document.getElementById('game'), { width, height })
+prepareMenu()
+
+start$.subscribe(resetScene)
 updateScene$.subscribe(drawSnake)
 
 function drawSnake (snake) {
-  const {
-    head,
-    body,
-  } = snake
+  resetScene()
 
-  let tempX = head[0] * unit
-  let tempY = head[1] * unit
-  if (tempX > width/2 || tempX < -width/2 || tempY > height/2 || tempY < -height/2 ) {
-    alert('lose');
-    moveInterval$.depose()
-    updateScene$.depose()
+  const { head, body } = snake
 
-    return
-  }
-
-  clear()
-  rect(ctx, tempX, tempY, unit, unit)
-
-  body.forEach((value) => {
-    tempX = tempX + value[0] * unit
-    tempY = tempY + value[1] * unit
-
-    rect(ctx, tempX, tempY, unit, unit)
-  })
+  ;[[0, 0], ...body].reduce((acc, current) => {
+    const position = [
+      acc[0] + current[0],
+      acc[1] + current[1]
+    ]
+    drawSnakeJoint(position[0], position[1])
+    return position
+  }, head)
 }
 
-function clear () {
-  ctx.fillStyle = 'black'
-  ctx.fillRect(0 - width / 2, 0 - height / 2, width, height)
+function prepareMenu() {
+  pc.clear(BG.menu)
 }
 
-function rect(ctx, x, y, width, height) {
-  ctx.strokeStyle = 'green'
-  ctx.strokeRect(x - width/2, y - height/2, width, height)
+function resetScene() {
+  pc.clear(BG.gaming)
+}
+
+function drawSnakeJoint(x, y) {
+  pc.strokeStyle('green')
+  pc.rect(x * unit, y * unit, unit, unit)
 }
 
 function mappingCodeToOffset (code) {
